@@ -1,0 +1,59 @@
+*.rar
+*.o
+*.d
+*.crf
+*.htm
+*.dep
+*.map
+*.bak
+*.lnp
+*.lst
+*.ini
+*.iex
+*.sct
+*.scvd
+*.dbg*
+
+#Ozone jlink log
+*JLinkLog.txt
+*.jdebug
+*.jdebug.*
+
+#调试/输出文件
+*.axf
+*.exf
+*.elf
+
+#keil 工程配置文件
+*.uvoptx
+*.uvguix.*
+*.mxproject
+*.uvguix
+
+# eide 编译输出配置文件
+*.eide.usr.ctx.json
+infantry.files.options.yml
+
+# eide 插件下载的工程文件夹
+*.cmsis/
+
+# eide 插件下载的支持包
+*.pack/
+
+# 格式化文件
+*.clang-format
+
+# 输出文件
+infantry/
+
+# keil debug配置文件
+DebugConfig/
+
+
+
+
+
+
+
+
+
