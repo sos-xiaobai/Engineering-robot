@@ -200,7 +200,8 @@ public:
 	void Task_Control_Robotarm();
 	//底盘通信
 	void Task_Chassis_Communication_PeriodElapsedCallback();
-	
+	//机械臂上电校准
+	bool Robotarm_Calibration();
 
 protected:
     //初始化相关常量
@@ -296,8 +297,7 @@ protected:
 	bool Motor_Calibration(Class_DJI_Motor_C620 &Motor,uint8_t num,float Cali_Omega,float Cali_Max_Out,float Target_Angle);
 	bool Motor_Calibration(Class_AK_Motor_80_6 &Motor,uint8_t num,float Cali_Omega,float Target_Angle);
 	bool Motor_Calibration(Class_DJI_Motor_C610 &Motor,uint8_t num,float Cali_Omega,float Cali_Max_Out,float Target_Angle);
-	//机械臂上电校准
-	bool Robotarm_Calibration();
+
 	//机械臂输出
     void Output();
 };

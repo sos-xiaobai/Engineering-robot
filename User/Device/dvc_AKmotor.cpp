@@ -370,8 +370,8 @@ void Class_AK_Motor_80_6::Task_Process_PeriodElapsedCallback()
     case (CAN_PACKET_SET_POS_SPD):
     {
         int32_t tmp_position = AK80_POSITION_FROM_FLOAT_TO_LSB(Target_Angle);
-        int16_t tmp_velocity = AK80_SPEED_POSITION_SPD_FROM_FLOAT_TO_LSB(Target_Omega);
-        int16_t tmp_torque = AK80_SPEED_POSITION_ACL_FROM_FLOAT_TO_LSB(Target_Torque);
+        int16_t tmp_velocity = AK80_SPEED_POSITION_SPD_FROM_FLOAT_TO_LSB(Max_Omega);
+        int16_t tmp_torque = AK80_SPEED_POSITION_ACL_FROM_FLOAT_TO_LSB(Max_Torque);
 
         Math_Endian_Reverse_32(&tmp_position);
         memcpy(&CAN_Tx_Data[0], &tmp_position, sizeof(uint32_t));

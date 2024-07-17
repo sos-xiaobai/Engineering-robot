@@ -47,18 +47,18 @@ void Class_Robotarm::Init()
     //3轴电机
 	Motor_Joint3.Init(&hcan1, DM_Motor_ID_0xA1, DM_Motor_Control_Method_POSITION_OMEGA, 0, 20.94359f, 10.0f);
 	//4轴电机
-	Motor_Joint4.PID_Angle.Init(0.5f, 0.0f, 0.01f, 0.0f, 1.0f * PI, 1.0f * PI);
-	Motor_Joint4.PID_Omega.Init(3000.0f, 0.0f, 0.0000f, 0, Motor_Joint4.Get_Output_Max(), Motor_Joint4.Get_Output_Max());
-	Motor_Joint4.Init(&hcan1, DJI_Motor_ID_0x202);
+	Motor_Joint4.PID_Angle.Init(0.1f, 0.0f, 0.0f, 0.0f, 40.0f, 60.0f);
+	Motor_Joint4.PID_Omega.Init(500.0f, 0.0f, 0.0000f, 0, Motor_Joint4.Get_Output_Max(), Motor_Joint4.Get_Output_Max()/10);
+	Motor_Joint4.Init(&hcan1, DJI_Motor_ID_0x202,DJI_Motor_Control_Method_ANGLE);
 	//5轴电机
-	Motor_Joint5.PID_Angle.Init(0.7f, 0.0f, 0.00f, 0.0f, 1.0f * PI, 1.0f * PI);
+	Motor_Joint5.PID_Angle.Init(5.0f, 0.0f, 0.00f, 0.0f, 180.0f, 180.0f);
 	Motor_Joint5.PID_Omega.Init(5000.0f, 0.0f, 0.0000f, 0, Motor_Joint5.Get_Output_Max(), Motor_Joint5.Get_Output_Max());
-	Motor_Joint5.Init(&hcan1, DJI_Motor_ID_0x203);
+	Motor_Joint5.Init(&hcan1, DJI_Motor_ID_0x203,DJI_Motor_Control_Method_ANGLE);
 	
-	for(uint8_t i = 0;i < 5;i++)
-	{
-		Joint_Offset_Angle[i] = Joint_Limit_Angle[Joint_Limit_Flag[i]][i];
-	}
+	// for(uint8_t i = 0;i < 5;i++)
+	// {
+	// 	Joint_Offset_Angle[i] = Joint_Limit_Angle[Joint_Limit_Flag[i]][i];
+	// }
 }
 
 /**
@@ -378,41 +378,65 @@ bool Class_Robotarm::Motor_Calibration(Class_DJI_Motor_C620 &Motor,uint8_t num,f
  * @brief AK校准函数
  *
  * @param Motor AK80_6指针
- * @param num 关节角标
+ * @param num 关节角标 1为1轴 2为2轴
  * @param Cali_Max_Out 校准最大电流输出
- * @param Cali_Omega 角度增量
+ * @param Cali_Omega 校准途中的转速 电气转速
  * @param Target_Angle 关节目标角度
  */
 bool Class_Robotarm::Motor_Calibration(Class_AK_Motor_80_6 &Motor,uint8_t num,float Cali_Omega,float Target_Angle)
 {
 	//记录电机堵转时间
+	// if(Motor.Get_Rx_Data() != 0)
+	// {
+	// 	if(count[num - 1] == 0)
+	// 	{
+	// 		Motor.Slope_Joint_Angle.Set_Increase_Value(180);
+	// 		Motor.Slope_Joint_Angle.Set_Decrease_Value(180);
+	// 		Joint_Offset_Angle[num - 1] += Motor.Get_Now_Angle();
+	// 		count[num - 1]++;
+	// 	}
+	// 	else
+	// 	{
+	// 		//角度增量
+	// 		Joint_Offset_Angle[num - 1] += Cali_Omega;
+	// 		if((fabs(Motor.Get_Now_Torque()) >= 5.0f))
+	// 		{
+	// 			count[num - 1]++;
+	// 			if(count[num - 1] >= 50)
+	// 			{
+	// 				Motor.Slope_Joint_Angle.Set_Increase_Value(0.1);
+	// 				Motor.Slope_Joint_Angle.Set_Decrease_Value(0.1);
+	// 				count[num - 1] = 0;
+	// 				Joint_Offset_Angle[num - 1] = Motor.Get_Now_Angle();
+	// 				Joint_World_Angle[num - 1] = Target_Angle;
+	// 				return true;
+	// 			}
+	// 		}
+	// 	}
+	// }
+	// return false;
 	static uint16_t count[2] = {0,0};
-	Motor.Set_AK_Motor_Control_Method(CAN_PACKET_SET_RUN_CONTROL);
+	Motor.Set_AK_Motor_Control_Method(CAN_PACKET_SET_RPM);
 	if(Motor.Get_Rx_Data() != 0)
 	{
-		if(count[num - 1] == 0)
+		Motor.Set_Target_Omega(Cali_Omega);
+		if(fabs(Motor.Get_Now_Torque()) >= 5.0f)
 		{
-			Motor.Slope_Joint_Angle.Set_Increase_Value(180);
-			Motor.Slope_Joint_Angle.Set_Decrease_Value(180);
-			Joint_Offset_Angle[num - 1] += Motor.Get_Now_Angle();
 			count[num - 1]++;
-		}
-		else
-		{
-			//角度增量
-			Joint_Offset_Angle[num - 1] += Cali_Omega;
-			if((fabs(Motor.Get_Now_Torque()) >= 5.0f))
+			if(count[num - 1] >= 50)
 			{
-				count[num - 1]++;
-				if(count[num - 1] >= 50)
-				{
-					Motor.Slope_Joint_Angle.Set_Increase_Value(0.1);
-					Motor.Slope_Joint_Angle.Set_Decrease_Value(0.1);
-					count[num - 1] = 0;
-					Joint_Offset_Angle[num - 1] = Motor.Get_Now_Angle();
-					Joint_World_Angle[num - 1] = Target_Angle;
-					return true;
-				}
+				//记录当前限位角度
+				Joint_Offset_Angle[num - 1] = Motor.Get_Now_Angle();
+				//改为速度角度控制，设置当前角度为目标角度
+				// Motor.Set_AK_Motor_Control_Method(CAN_PACKET_SET_POS_SPD);
+				// Motor.Set_Target_Omega(Motor.get_Max_Omega());
+				// Motor.Set_Target_Angle(Joint_Offset_Angle[num - 1]);
+				Motor.Set_Target_Omega(0);
+				Motor.Task_Process_PeriodElapsedCallback();
+				//清零计数
+				count[num - 1] = 0;
+				//返回校准成功
+				return true;
 			}
 		}
 	}
@@ -467,7 +491,7 @@ bool Class_Robotarm::Robotarm_Calibration()
 	static uint8_t Arm_Cal_Flag =0;
 	if((Arm_Cal_Flag & (1<<1)) == 0)
 	{
-		if(Motor_Calibration(Motor_Joint1,1,0.01f,85.422f) == true)
+		if(Motor_Calibration(Motor_Joint1,1,300.0f,85.422f) == true)
 		{
 			Arm_Cal_Flag |= (1<<1);
 		}
@@ -475,38 +499,40 @@ bool Class_Robotarm::Robotarm_Calibration()
 	//关节2校准
 	if((Arm_Cal_Flag & (1<<2)) == 0)
 	{
-		if(Motor_Calibration(Motor_Joint2,2,-0.03f,-170.845f) == true)
+		if(Motor_Calibration(Motor_Joint2,2,300.0f,-170.845f) == true)
 		{
 			Arm_Cal_Flag |= (1<<2);
 		}
 	}
-//	//关节3校准
-//	if((Arm_Cal_Flag & (1<<3)) == 0)
-//	{
-//		if(Motor_Calibration(Motor_Joint3,3,-0.2*PI,4000,-85.422f) == true)
-//		{
-//			Arm_Cal_Flag |= (1<<3);
-//		}
-//	}
-	//关节4校准
-	if((Arm_Cal_Flag & (1<<4)) == 0)
-	{
-		if(Motor_Calibration(Motor_Joint4,4,0.2*PI,4000,0) == true)
-		{
-			Arm_Cal_Flag |= (1<<4);
-		}
-	}
-	//关节5校准
-	if((Arm_Cal_Flag & (1<<5)) == 0)
-	{
-		if(Motor_Calibration(Motor_Joint5,5,-0.2*PI,3000,0) == true)
-		{
-			Arm_Cal_Flag |= (1<<5);
-		}
-	}
+
+	// //关节4校准
+	// if((Arm_Cal_Flag & (1<<4)) == 0)
+	// {
+	// 	if(Motor_Calibration(Motor_Joint4,4,0.2*PI,4000,0) == true)
+	// 	{
+	// 		Arm_Cal_Flag |= (1<<4);
+	// 	}
+	// }
+	// //关节5校准
+	// if((Arm_Cal_Flag & (1<<5)) == 0)
+	// {
+	// 	if(Motor_Calibration(Motor_Joint5,5,-0.2*PI,3000,0) == true)
+	// 	{
+	// 		Arm_Cal_Flag |= (1<<5);
+	// 	}
+	// }
 	
 	//校准完毕后，标志位全部置1
-	if(Arm_Cal_Flag == 54)
+	// if(Arm_Cal_Flag == 54)
+	// {
+	// 	Arm_Cal_Flag = 0;
+	// 	return true;
+	// }
+	// else
+	// {
+	// 	return false;
+	// }
+	if(Arm_Cal_Flag == 6)
 	{
 		Arm_Cal_Flag = 0;
 		return true;

@@ -216,6 +216,7 @@ public:
     inline float Get_Target_Angle();
     inline float Get_Target_Omega();
     inline float Get_Target_Torque();
+    inline float get_Max_Omega();
     
     inline void Set_AK_Control_Status(Enum_AK_Motor_Control_Status __AK_Motor_Control_Status);
     inline void Set_AK_Motor_Control_Method(Enum_AK_Motor_Control_Method __AK_Motor_Control_Method);
@@ -265,6 +266,7 @@ protected:
     //读变量
 
     //电机状态
+
     Enum_AK_Motor_Status AK_Motor_Status = AK_Motor_Status_DISABLE;
     
 
@@ -283,12 +285,16 @@ protected:
     float MIT_K_P;
     //MIT的Kd值, 0~5, 空载0.2, 位置和速度控制需要
     float MIT_K_D;
-    //目标的角度, rad
+    //目标的角度
     float Target_Angle = 0.0f;
     //目标的速度, rad/s
     float Target_Omega = 0.0f;
     //目标的扭矩
     float Target_Torque = 0.0f;
+
+    //AK速度位置模式的速度力矩参数
+    float Max_Omega = 800.0f;
+    float Max_Torque = 100.0f;
     //内部函数
 
     void Data_Process();
@@ -415,6 +421,17 @@ float Class_AK_Motor_80_6::Get_Target_Omega()
 float Class_AK_Motor_80_6::Get_Target_Torque()
 {
     return (Target_Torque);
+}
+
+/**
+ * @brief 获取最大速度
+ *
+ * @return float 最大速度
+ */
+float Class_AK_Motor_80_6::get_Max_Omega()
+{
+    return (Max_Omega);
+
 }
 
 /**

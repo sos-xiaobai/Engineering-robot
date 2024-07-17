@@ -254,27 +254,99 @@ void Task100us_TIM4_Callback()
 
 //注册订阅者
 Subscriber Task_Sub_Joint5_angle = Message_Manager.SubRegister("Joint5_angle", sizeof(float));
+
+
+float m2006_test_angle_before = 0;
+float m2006_test_angle_after = 0;
+
+float m3508_test_angle_before = 0;
+float m3508_test_angle_after = 0;
+
 float joint5_test_angle = 0;
-float dm_test_angle_before = 90;
+
+float dm_test_angle_before = 180;
 float dm_test_angle_after = 0;
-float dm_test_omega = 0;
+float dm_test_omega = 1;
+
+float Ak_2_test_angle_before = 180;
+float Ak_2_test_angle_after = 0;
+float Ak_2_test_omega = 0;
+
+float Ak_1_test_angle_before = 0;
+float Ak_1_test_angle_after = 0;
+float Ak_1_test_omega = 0;
+
+uint8_t m2006_test =1;
+uint8_t AK_Motor_CAN_Message_Save_Zero_1[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe};
+
+bool init_finished = false;
+
 void Task1ms_TIM5_Callback()
 {
 
     /************ 判断设备在线状态判断 50ms (所有device:电机，遥控器，裁判系统等) ***************/
     static uint8_t TIM1msMod50 = 0;
     TIM1msMod50++;
-    if(TIM1msMod50 == 50)
+    if(TIM1msMod50 == 50 )
     {
         TIM1msMod50 = 0;
-        Robotarm.Task_Alive_PeriodElapsedCallback();
+        if(!init_finished)
+        {
+            Robotarm.Motor_Joint1.Task_Alive_PeriodElapsedCallback();
+            Robotarm.Motor_Joint2.Task_Alive_PeriodElapsedCallback();            
+        }
+        Robotarm.Motor_Joint3.TIM_Alive_PeriodElapsedCallback();
+        Robotarm.Motor_Joint4.TIM_Alive_PeriodElapsedCallback();
+	    Robotarm.Motor_Joint5.TIM_Alive_PeriodElapsedCallback();
+        // Robotarm.Task_Alive_PeriodElapsedCallback();
     }
-    // 370  550
-    // 2.78986112358193  5.931453777171725
-    dm_test_angle_after = (dm_test_angle_before + 159.8472678088705f)/180.0f*PI;
-    Robotarm.Motor_Joint3.Set_Target_Angle(dm_test_angle_after);
-    Robotarm.Motor_Joint3.Set_Target_Omega(dm_test_omega);
-    Robotarm.Motor_Joint3.TIM_Process_PeriodElapsedCallback();  
+ //CAN_Send_Data(&hcan1, 0x14, AK_Motor_CAN_Message_Save_Zero_1, (uint16_t)8,CAN_ID_STD);
+    //Robotarm.Motor_Joint1.Task_PID_PeriodElapsedCallback();
+    // Ak_1_test_angle_after = Ak_1_test_angle_before - 270.0f;
+
+    if(!init_finished)
+    {
+        init_finished = Robotarm.Robotarm_Calibration();
+    }
+    if(init_finished)
+    {
+        Robotarm.Motor_Joint1.Set_AK_Motor_Control_Method(CAN_PACKET_SET_POS_SPD);
+        Ak_1_test_angle_after = Ak_1_test_angle_before + Robotarm.Get_Joint_Offset_Angle(1);
+        Robotarm.Motor_Joint1.Set_Target_Omega(Robotarm.Motor_Joint1.get_Max_Omega());
+        Robotarm.Motor_Joint1.Set_Target_Angle(Ak_1_test_angle_after);   
+
+        Robotarm.Motor_Joint2.Set_AK_Motor_Control_Method(CAN_PACKET_SET_POS_SPD);
+        Ak_2_test_angle_after = Ak_2_test_angle_before + (Robotarm.Get_Joint_Offset_Angle(2)-225.0f);
+        Robotarm.Motor_Joint2.Set_Target_Omega(Robotarm.Motor_Joint2.get_Max_Omega());
+        Robotarm.Motor_Joint2.Set_Target_Angle(Ak_2_test_angle_after);  
+
+        dm_test_angle_after = (dm_test_angle_before - 90.0f) * DEG_TO_RAD;
+        Robotarm.Motor_Joint3.Set_Target_Angle(dm_test_angle_after);
+        Robotarm.Motor_Joint3.Set_Target_Omega(dm_test_omega);
+        Robotarm.Motor_Joint3.Set_DM_Control_Status(DM_Motor_Control_Status_ENABLE);
+        
+    }    
+    if(m2006_test)
+    {
+        //m2006_test = 0;
+        // Robotarm.Motor_Joint1.Set_AK_Motor_Control_Method(CAN_PACKET_SET_RPM);
+        // Robotarm.Motor_Joint1.Set_Target_Angle(Ak_1_test_angle_after);
+        // Robotarm.Motor_Joint1.Set_Target_Omega(Ak_1_test_omega);
+        Robotarm.Motor_Joint1.Task_Process_PeriodElapsedCallback();
+        Robotarm.Motor_Joint2.Task_Process_PeriodElapsedCallback();
+        Robotarm.Motor_Joint3.TIM_Process_PeriodElapsedCallback();  
+    }
+      
+
+//    m2006_test_angle_after = m2006_test_angle_before + 1.4302572f;
+//    Robotarm.Motor_Joint5.Set_Target_Angle(m2006_test_angle_after);
+//    Robotarm.Motor_Joint5.TIM_PID_PeriodElapsedCallback();
+
+//    m3508_test_angle_after = m3508_test_angle_before + 14.9686575f;
+//    Robotarm.Motor_Joint4.Set_Target_Angle(m3508_test_angle_after);
+   Robotarm.Motor_Joint4.TIM_PID_PeriodElapsedCallback();
+    if(m2006_test)
+    // TIM_CAN_PeriodElapsedCallback();
 
     //订阅者获取消息
     Message_Manager.SubGet_Message<float>(Task_Sub_Joint5_angle, joint5_test_angle);
@@ -298,6 +370,7 @@ void Task1ms_TIM5_Callback()
  * @brief 初始化任务
  *
  */
+
 extern "C" void Task_Init()
 {  
 
@@ -337,6 +410,11 @@ extern "C" void Task_Init()
 
     HAL_TIM_Base_Start_IT(&htim4);
     HAL_TIM_Base_Start_IT(&htim5);
+    uint8_t DM_Motor_CAN_Message_Enter_1[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc};
+    //CAN_Send_Data(&hcan1, 0x101, DM_Motor_CAN_Message_Save_Zero_1, 8,CAN_ID_STD);
+    // for(auto i=0;i<50;i++)
+    // CAN_Send_Data(&hcan1, 0x101, DM_Motor_CAN_Message_Enter_1, 8,CAN_ID_STD);
+    
 }
 
 /**

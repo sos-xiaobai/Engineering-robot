@@ -275,7 +275,6 @@ void Class_DM_Motor_J4310::TIM_Alive_PeriodElapsedCallback()
 					break;
 					}
     }
-		Set_DM_Control_Status(DM_Motor_Control_Status_ENABLE);
     break;
     case (DM_Motor_Control_Status_ENABLE):
     {
